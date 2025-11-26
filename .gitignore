@@ -1,0 +1,76 @@
+# ------------------------
+# Node modules (client & server)
+# ------------------------
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# ------------------------
+# Build / Output folders
+# ------------------------
+dist/
+client/dist/
+server/dist/
+build/
+client/build/
+server/build/
+
+# ------------------------
+# Environment variables
+# ------------------------
+.env
+.env.local
+.env.development
+.env.production
+client/.env
+client/.env.local
+server/.env
+server/.env.local
+
+# Never commit keys or secrets!
+# Supabase, Render, Brevo SMTP, JWT, etc.
+
+# ------------------------
+# Logs
+# ------------------------
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# ------------------------
+# OS / Editor junk
+# ------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ------------------------
+# TypeScript build info
+# ------------------------
+*.tsbuildinfo
+client/tsconfig.tsbuildinfo
+server/tsconfig.tsbuildinfo
+
+# ------------------------
+# Vite cache
+# ------------------------
+.vite/
+client/.vite/
+server/.vite/
+
+# ------------------------
+# IDE files
+# ------------------------
+.vscode/
+.idea/
+*.iml
+
+# ------------------------
+# Temporary files
+# ------------------------
+tmp/
+temp/
