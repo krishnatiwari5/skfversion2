@@ -2,40 +2,71 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import pkg from "nodemailer";
-const nodemailer = pkg as typeof import("nodemailer");
-
 const {
-  SMTP_HOST, SMTP_PORT, SMTP_SECURE,
-  SMTP_USER, SMTP_PASS, EMAIL_FROM, EMAIL_TO,
-  SITE_PHONE
+  BREVO_API_KEY,
+  BREVO_SENDER_EMAIL,
+  BREVO_SENDER_NAME,
+  EMAIL_TO,
+  SITE_PHONE,
 } = process.env;
 
-export const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: SMTP_PORT ? Number(SMTP_PORT) : 587,
-  secure: SMTP_SECURE === "true",
-  auth: SMTP_USER && SMTP_PASS ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
-});
+const LOGO_URL = "https://shreekrishnafabrication.in/skf-krishna-logo-2.png";
 
+const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
+
+/* ---------------- verify ---------------- */
 export async function verifyMail() {
+  if (!BREVO_API_KEY) {
+    console.warn("[mail] BREVO_API_KEY not set - skipping verify");
+    return;
+  }
+
   try {
-    if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
-      await transporter.verify();
-      console.log("[mail] SMTP verified");
-    } else {
-      console.log("[mail] SMTP not fully configured - skipping verify");
-    }
+    // lightweight check: call the send endpoint with empty payload headers to validate auth
+    const res = await fetch(BREVO_ENDPOINT, {
+      method: "OPTIONS",
+      headers: {
+        "api-key": BREVO_API_KEY,
+      },
+    });
+
   } catch (err) {
-    console.error("[mail] SMTP verify failed:", err);
+    console.error("[mail] Brevo verify network error:", err);
   }
 }
- 
-/**
- * NOTE: image URL uses your uploaded file path which will be transformed by your environment:
- * /mnt/data/809fedcf-e4e3-401c-a6a9-57e0c55c4900.png
- */
-const LOGO_URL = "https://shreekrishnafabrication.in/skf-krishna-logo-2.png";
+
+/* ---------------- helper: call Brevo ---------------- */
+async function callBrevo(payload: any) {
+  if (!BREVO_API_KEY) throw new Error("BREVO_API_KEY not set");
+
+  const res = await fetch(BREVO_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": BREVO_API_KEY,
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+    // no-cors not relevant on server; native fetch handles TLS
+  });
+
+  const body = await res.text();
+  let json: any = undefined;
+  try {
+    json = body ? JSON.parse(body) : undefined;
+  } catch (e) {
+    // not JSON (rare) — keep raw text
+  }
+
+  if (!res.ok) {
+    const err = new Error(`Brevo API error: ${res.status} ${res.statusText}`);
+    ;(err as any).status = res.status;
+    ;(err as any).body = json ?? body;
+    throw err;
+  }
+
+  return json ?? body;
+}
 
 /* ---------------- Admin notification ---------------- */
 export async function sendContactMail(submission: {
@@ -51,21 +82,35 @@ export async function sendContactMail(submission: {
     console.warn("[mail] EMAIL_TO not set; skipping admin email");
     return;
   }
+  if (!BREVO_API_KEY) {
+    console.warn("[mail] BREVO_API_KEY not set; skipping admin email");
+    return;
+  }
 
   const html = adminHtml(submission);
   const text = adminPlain(submission);
 
-  return transporter.sendMail({
-    from: EMAIL_FROM,
-    to: EMAIL_TO,
+  const toList = EMAIL_TO.split(",").map((s) => ({ email: s.trim() })).filter(Boolean);
+
+  const payload = {
+    sender: { email: BREVO_SENDER_EMAIL || toList[0].email, name: BREVO_SENDER_NAME || "Site" },
+    to: toList,
     subject: `New contact — ${submission.name} (${submission.service ?? "General"})`,
-    text,
-    html,
-  });
+    htmlContent: html,
+    textContent: text,
+  };
+
+  try {
+    const resp = await callBrevo(payload);
+    console.log("[mail] admin email queued", { resp });
+    return resp;
+  } catch (err) {
+    console.error("[mail] admin send error", err);
+    throw err;
+  }
 }
 
 function adminHtml(s: any) {
-  // theme: dark header (#0f172a), warm orange accent (#f59e0b)
   return `
   <!doctype html>
   <html>
@@ -172,19 +217,33 @@ Submitted at: ${s.submittedAt ?? new Date()}
 }
 
 /* ---------------- Auto-reply (user) ---------------- */
-// Replace existing sendAutoReply, userHtml, userPlain with this improved version:
 
 export async function sendAutoReply(submission: any) {
   if (!submission?.email) return;
+  if (!BREVO_API_KEY) {
+    console.warn("[mail] BREVO_API_KEY not set; skipping autoresply");
+    return;
+  }
+
   const html = userHtmlImproved(submission);
   const text = userPlainImproved(submission);
-  return transporter.sendMail({
-    from: EMAIL_FROM,
-    to: submission.email,
+
+  const payload = {
+    sender: { email: BREVO_SENDER_EMAIL || (EMAIL_TO?.split(",")[0]?.trim()) || "no-reply@example.com", name: BREVO_SENDER_NAME || "Site" },
+    to: [{ email: submission.email, name: submission.name }],
     subject: `Thanks — We received your request`,
-    text,
-    html,
-  });
+    htmlContent: html,
+    textContent: text,
+  };
+
+  try {
+    const resp = await callBrevo(payload);
+    console.log("[mail] autoresply queued", { resp });
+    return resp;
+  } catch (err) {
+    console.error("[mail] autoresply error", err);
+    throw err;
+  }
 }
 
 function userHtmlImproved(sub: any) {
@@ -240,7 +299,7 @@ function userHtmlImproved(sub: any) {
           <!-- small footer details -->
           <tr>
             <td style="padding:14px 22px 20px 22px; background:#f8fafc; text-align:center; font-size:13px; color:#475569;">
-              <div style="margin-bottom:6px;">Need help now? Call: <strong>${escape(process.env.SITE_PHONE ?? "Phone number")}</strong></div>
+              <div style="margin-bottom:6px;">Need help now? Call: <strong>${escape(SITE_PHONE ?? "Phone number")}</strong></div>
               <div style="font-size:12px; color:#6b7280;">We reply Monday–Saturday: 9:00 AM — 7:00 PM. Avg response time: 24–48 hours.</div>
             </td>
           </tr>
@@ -264,14 +323,17 @@ function userPlainImproved(sub: any) {
 
 We received your request for ${sub.service ?? "a general enquiry"}. Our team will contact you within 24–48 hours.
 
-If it's urgent, call: ${process.env.SITE_PHONE ?? "Phone number"}.
+If it's urgent, call: ${SITE_PHONE ?? "Phone number"}.
 
 — Shree Krishna Fabrication`;
 }
 
 /* ---------------- helpers ---------------- */
 function escape(s: string) {
-  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 function nl2br(s: string) {
   return escape(s).replace(/\n/g, "<br/>");
