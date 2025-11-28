@@ -60,8 +60,8 @@ async function callBrevo(payload: any) {
 
   if (!res.ok) {
     const err = new Error(`Brevo API error: ${res.status} ${res.statusText}`);
-    ;(err as any).status = res.status;
-    ;(err as any).body = json ?? body;
+    ; (err as any).status = res.status;
+    ; (err as any).body = json ?? body;
     throw err;
   }
 
@@ -231,7 +231,7 @@ export async function sendAutoReply(submission: any) {
   const payload = {
     sender: { email: BREVO_SENDER_EMAIL || (EMAIL_TO?.split(",")[0]?.trim()) || "no-reply@example.com", name: BREVO_SENDER_NAME || "Site" },
     to: [{ email: submission.email, name: submission.name }],
-    subject: `Thanks — We received your request`,
+    subject: `Thanks, We received your request`,
     htmlContent: html,
     textContent: text,
   };
@@ -247,6 +247,14 @@ export async function sendAutoReply(submission: any) {
 }
 
 function userHtmlImproved(sub: any) {
+  const btn1 = escape(sub.buttonText1 ?? "View Portfolio");
+  const btn2 = escape(sub.buttonText2 ?? "Reply by Email");
+  const name = escape(sub.name ?? "there");
+  const service = escape(sub.service ?? "a project enquiry");
+  const logo = LOGO_URL ?? "";
+  const mail = escape(BREVO_SENDER_EMAIL ?? "skf.6716@gmail.com");
+  const phone = escape(SITE_PHONE ?? "+91 93271 20122");
+
   return `
   <!doctype html>
   <html>
@@ -254,56 +262,96 @@ function userHtmlImproved(sub: any) {
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>Thanks from Shree Krishna Fabrication</title>
+
+    <!-- MOBILE BUTTON STACKING -->
+    <style>
+      @media only screen and (max-width:480px) {
+        .mobile-btn {
+          display:block !important;
+          width:90% !important;
+          margin:10px auto !important;
+          text-align:center !important;
+        }
+        .cta-table {
+          width:100% !important;
+        }
+      }
+    </style>
   </head>
   <body style="margin:0;background:#0b0b0b;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial;color:#0f172a;">
     <table width="100%" cellpadding="0" cellspacing="0" style="padding:28px 12px; background:#f3f4f6;">
       <tr><td align="center">
+
         <table width="680" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 8px 30px rgba(2,6,23,0.35);">
-          
-          <!-- top banner with logo -->
+
+          <!-- HEADER -->
           <tr>
             <td style="background:linear-gradient(90deg,#0f172a,#0b1220);padding:20px 22px;color:#fff;">
-              <table width="100%"><tr>
-                <td style="vertical-align:middle;">
-                  <img src="${LOGO_URL}" width="64" alt="Shree Krishna Fabrication" style="display:block;border-radius:6px;"/>
-                </td>
-                <td style="text-align:right;vertical-align:middle;">
-                  <div style="font-weight:800;font-size:16px;letter-spacing:0.6px;">SHREE KRISHNA FABRICATION</div>
-                  <div style="font-size:12px;color:#cbd5e1;opacity:0.9;margin-top:4px;">Premium MS & SS Fabrication</div>
-                </td>
-              </tr></table>
+              <table width="100%">
+                <tr>
+                  <td style="vertical-align:middle;">
+                    <img src="${logo}" width="64" style="display:block;border-radius:6px;" alt="Shree Krishna Fabrication"/>
+                  </td>
+                  <td style="text-align:right;vertical-align:middle;">
+                    <div style="font-weight:800;font-size:16px;letter-spacing:0.6px;">SHREE KRISHNA FABRICATION</div>
+                    <div style="font-size:12px;color:#cbd5e1;margin-top:4px;">Premium MS & SS Fabrication</div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
-          <!-- hero -->
+          <!-- HERO CONTENT -->
           <tr>
-            <td style="padding:26px 28px 12px 28px; text-align:left; color:#0f172a;">
-              <h2 style="margin:0 0 8px; font-size:20px; line-height:1.1;">Thanks, ${escape(sub.name)} — we got your request</h2>
-              <p style="margin:0 0 14px; color:#374151; font-size:15px;">
-                We’ve received your request for <strong>${escape(sub.service ?? "a project enquiry")}</strong>. Our team reviews requests quickly and will contact you within <strong>24–48 hours</strong>.
+            <td style="padding:26px 28px 12px; color:#0f172a;">
+              <h2 style="margin:0 0 12px; font-size:20px;">Thanks, ${name}</h2>
+              <h3 style="margin:0 0 10px; font-size:18px; font-weight:600;">We received your request</h3>
+              <p style="margin:0 0 14px; color:#374151; font-size:15px; line-height:1.5;">
+                We’ve received your request for <strong>${service}</strong>.  
+                Our team will contact you within <strong>24–48 hours</strong>.
               </p>
             </td>
           </tr>
 
-
-          <!-- CTA -->
+          <!-- CTA BUTTONS -->
           <tr>
-            <td style="padding:6px 28px 20px 28px; text-align:center;">
-              <a href="https://shreekrishnafabrication.in/portfolio" target="_blank"
-                 style="display:inline-block;background:#f59e0b;color:#08121a;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:700;">
-                 View our portfolio
-              </a>
+            <td style="padding:10px 28px 24px; text-align:center;">
+              <table cellpadding="0" cellspacing="0" class="cta-table" style="margin:0 auto;">
+                <tr>
+                  <td style="text-align:center;">
+
+                    <!-- BUTTON 1 -->
+                    <a href="https://shreekrishnafabrication.in" target="_blank"
+                      class="mobile-btn"
+                      style="display:inline-block;background:#f59e0b;color:#08121a;padding:12px 22px;border-radius:10px;font-weight:700;text-decoration:none;margin-right:10px;line-height:1.2;">
+                      ${btn1}
+                    </a>
+
+                    <!-- BUTTON 2 -->
+                    <a href="mailto:${mail}"
+                      class="mobile-btn"
+                      style="display:inline-block;background:#f59e0b;color:#08121a;padding:12px 22px;border-radius:10px;font-weight:700;text-decoration:none;line-height:1.2;">
+                      ${btn2}
+                    </a>
+
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
-          <!-- small footer details -->
+          <!-- FOOTER -->
           <tr>
-            <td style="padding:14px 22px 20px 22px; background:#f8fafc; text-align:center; font-size:13px; color:#475569;">
-              <div style="margin-bottom:6px;">Need help now? Call: <strong>${escape(SITE_PHONE ?? "Phone number")}</strong></div>
-              <div style="font-size:12px; color:#6b7280;">We reply Monday–Saturday: 9:00 AM — 7:00 PM. Avg response time: 24–48 hours.</div>
+            <td style="padding:18px 22px 20px; background:#f8fafc; text-align:center; font-size:13px; color:#475569;">
+              <div style="margin-bottom:6px;">
+                Need help now? Call:
+                <a href="tel:${phone.replace(/\s+/g,'')}" style="color:#0f172a;text-decoration:none;"><strong>${phone}</strong></a>
+              </div>
+              <div style="font-size:12px;color:#6b7280;">Monday–Saturday: 9:00 AM — 7:00 PM • Avg response time: 24–48 hours</div>
             </td>
           </tr>
 
+          <!-- COPYRIGHT -->
           <tr>
             <td style="background:#0f172a;padding:12px;color:#cbd5e1;text-align:center;font-size:12px;">
               © ${new Date().getFullYear()} Shree Krishna Fabrication — Premium Fabrication in Surat
@@ -311,6 +359,7 @@ function userHtmlImproved(sub: any) {
           </tr>
 
         </table>
+
       </td></tr>
     </table>
   </body>
